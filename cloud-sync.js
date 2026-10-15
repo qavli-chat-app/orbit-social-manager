@@ -63,7 +63,7 @@ async function signUp() {
   if (!email || password.length < 8) return message("Enter your email and a password of at least 8 characters.", true);
   setBusy(true);
   try {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
     if (error) throw error;
     message(data.session
       ? "Account created and signed in."
