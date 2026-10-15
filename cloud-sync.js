@@ -253,9 +253,9 @@ async function refreshConnectedCount() {
     .select("platform,provider_account_id")
     .eq("connection_status", "connected");
   if (error) return;
-  const unique = new Set((data || []).map(row => row.platform + ":" + row.provider_account_id));
+  const unique = new Set((data || []).map(row => row.platform));
   const stat = document.getElementById("connectedStat");
-  if (stat) stat.textContent = unique.size + " / 8";
+  if (stat) stat.textContent = unique.size + " / 4";
 }
 async function connectSocial(platform, buttonId) {
   const { data: { session } } = await supabase.auth.getSession();
