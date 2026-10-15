@@ -58,3 +58,29 @@ A Supabase Edge Function named `youtube-oauth` has been deployed. It is intentio
 - The `youtube_oauth_states` and `youtube_oauth_tokens` tables have RLS enabled and no grants for `anon` or `authenticated`; only server-side code should access them.
 - The first iteration requests read-only channel access. Video uploads, scheduling, token refresh/revocation UX, and public Google app verification are not yet implemented.
 - Keep within free-tier quotas; enabling the API does not guarantee unlimited free quota.
+
+
+## Facebook Pages, Instagram and TikTok OAuth
+
+The `social-oauth` Edge Function is deployed and uses one-time, 10-minute OAuth state bound to the signed-in Orbit user. It verifies the provider response before saving account metadata, encrypts provider tokens with AES-GCM, and stores them in server-only `social_oauth_tokens`. The new OAuth tables have RLS enabled and no browser-role SELECT grants.
+
+Callback URL for Meta and TikTok:
+`https://bimngjcqcebertsgvovl.supabase.co/functions/v1/social-oauth`
+
+Add these values under Supabase **Edge Functions → Secrets** (never GitHub or browser code):
+- `META_APP_ID` — Meta app ID
+- `META_APP_SECRET` — Meta app secret
+- `TIKTOK_CLIENT_KEY` — TikTok developer app client key
+- `TIKTOK_CLIENT_SECRET` — TikTok developer app secret
+- `ORBIT_TOKEN_ENCRYPTION_KEY` — same base64-encoded 32-byte encryption key used by the YouTube function
+
+### Provider-side setup and restrictions
+- **Meta / Facebook Pages:** Add the exact callback URL to the Meta app's Valid OAuth Redirect URIs. The login must have access to one or more Facebook Pages. Meta may require app review and advanced access for permissions such as `pages_manage_posts` and `instagram_content_publish`.
+- **Instagram:** This flow discovers Instagram professional accounts linked to the authorized Facebook Pages. Personal Instagram accounts are not supported by this publishing API flow. Link the Instagram Business/Creator profile to a Facebook Page before connecting.
+- **TikTok:** Add the exact callback URL to the TikTok app's redirect URI allowlist and request the relevant approved scopes. Direct Post requires approved `video.publish` access and TikTok's product-use/audit requirements; unaudited direct posts can be restricted to private visibility. TikTok may reject a social-management app whose use case does not meet its developer guidelines.
+- OAuth connection does **not** mean publishing or scheduling is enabled. Real publishing needs separate platform-specific upload endpoints, media hosting, explicit consent, rate-limit handling and verified provider permissions. Scheduled jobs also need a working worker/cron path. Do not report these as operational until end-to-end tests pass.
+
+### Current verification status
+- Deployed: `youtube-oauth` Edge Function and `social-oauth` Edge Function.
+- Database check confirmed `social_oauth_states` and `social_oauth_tokens` have RLS enabled and neither `anon` nor `authenticated` can SELECT them.
+- Not yet verified: actual provider account connection (secrets and provider-side OAuth apps still need owner configuration), any real post, and scheduled publishing.
