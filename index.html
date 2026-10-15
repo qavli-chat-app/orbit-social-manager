@@ -36,13 +36,16 @@
 </div><div class="notice">Connection status is intentionally not simulated. Add each platform's official OAuth/API credentials on a secure backend before enabling real publishing.</div></section>
 <section class="card span5" id="publish"><div class="card-head"><h2>Publish studio</h2><span class="pill">Local draft</span></div>
 <div class="field"><label for="postTitle">Post title / campaign</label><input id="postTitle" placeholder="e.g. October product launch" maxlength="120"></div>
-<div class="field"><label for="videoFile">Choose a video from your phone</label><input id="videoFile" type="file" accept="video/*"><div class="mini">Preview only. This starter does not upload your video to a server.</div><video id="videoPreview" class="preview" controls playsinline hidden></video></div>
+<div class="field"><label for="videoFile">Choose a video from your phone</label><input id="videoFile" type="file" accept="video/*,image/jpeg,image/png,image/webp"><div class="mini">Images/videos up to 50 MB are uploaded to public media storage when you publish or schedule. Anyone with the media URL may view the file.</div><video id="videoPreview" class="preview" controls playsinline hidden></video><img id="imagePreview" class="preview" alt="Selected image preview" hidden></div>
 <div class="field"><label for="caption">Caption</label><textarea id="caption" placeholder="Write a caption or generate a starting idea below…"></textarea></div>
 <div class="field"><label for="hashtags">Hashtags</label><input id="hashtags" placeholder="#YourBrand #NewVideo"></div>
 <div class="row"><button class="btn" id="generateBtn">✦ Generate caption idea</button><button class="btn primary" id="saveBtn">Save draft</button></div>
 <div class="field"><label>Platforms to prepare for</label><div class="platforms" id="platformChecks" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div></div>
-<div class="row"><button class="btn" id="exportBtn">Export draft JSON</button><button class="btn" id="clearBtn">Clear form</button></div>
-<div class="notice">Saving a draft does not publish it. Direct publishing is not enabled until platform-specific API access and backend credentials are configured.</div>
+<div class="field"><label for="scheduledFor">Schedule date and time (optional)</label><input id="scheduledFor" type="datetime-local"></div>
+<div class="row"><button class="btn primary" id="publishNow" hidden>Publish selected platforms</button><button class="btn" id="schedulePublish" hidden>Schedule selected platforms</button></div>
+<div class="mini">YouTube uploads start as private. TikTok uses the official inbox-upload flow, so you must finish the post inside TikTok. Instagram and Facebook require approved account permissions.</div>
+<div class="row" style="margin-top:12px"><button class="btn" id="exportBtn">Export draft JSON</button><button class="btn" id="clearBtn">Clear form</button></div>
+<div class="notice">Publishing stays disabled by each provider until its official OAuth credentials and permissions are configured. A successful queue response is not proof a post was published; results are checked server-side.</div>
 </section>
 <section class="card span7" id="ai"><div class="card-head"><h2>AI caption studio</h2><span class="pill">Offline template</span></div><p class="sub" style="font-size:13px">Create a local caption starter without a paid AI service. This is a template generator, not a connected AI model.</p>
 <div class="field"><label for="topic">What is your video about?</label><input id="topic" placeholder="e.g. 3 quick study tips"></div>
