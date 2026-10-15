@@ -349,6 +349,7 @@ const params = new URLSearchParams(window.location.search);
 if (params.get("youtube_connected") === "1") {
   message("YouTube channel authorization was verified. Sign in to refresh its connection status.");
   params.delete("youtube_connected");
+}
 if (params.has("social_connected")) {
   const platform = params.get("social_connected");
   const pages = params.get("pages");
@@ -360,10 +361,10 @@ if (params.has("social_connected")) {
   params.delete("pages");
   params.delete("instagram");
 }
+if ([...params.keys()].length !== new URLSearchParams(window.location.search).size) {
   const clean = window.location.pathname + (params.toString() ? "?" + params.toString() : "") + window.location.hash;
   window.history.replaceState({}, "", clean);
 }
-
 $("cloudSignOut").addEventListener("click", async () => {
   const { error } = await supabase.auth.signOut();
   if (error) authError(error);
