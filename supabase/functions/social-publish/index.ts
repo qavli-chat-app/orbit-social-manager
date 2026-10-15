@@ -81,7 +81,7 @@ async function publishYouTube(admin:ReturnType<typeof createClient>,userId:strin
   const init=await fetch("https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",{method:"POST",headers:{Authorization:"Bearer "+tokens.access_token,"Content-Type":"application/json; charset=UTF-8","X-Upload-Content-Type":type,"X-Upload-Content-Length":String(bytes.byteLength)},body:JSON.stringify(metadata)});
   const uploadUrl=init.headers.get("location");
   if(!init.ok||!uploadUrl)throw new Error("YouTube upload could not be initialized. Check upload permission and Google API approval.");
-  const uploaded=await fetch(uploadUrl,{method:"PUT",headers:{"Content-Type":type,"Content-Length":String(bytes.byteLength)},body:bytes});
+  const uploaded=await fetch(uploadUrl,{method:"PUT",headers:{"Content-Type":type},body:bytes});
   const result=await uploaded.json();
   if(!uploaded.ok||!result.id)throw new Error("YouTube did not confirm the video upload.");
   return {id:result.id,url:"https://www.youtube.com/watch?v="+result.id,status:"published_private"};
@@ -189,8 +189,9 @@ Deno.serve(async(req:Request)=>{
         const {data:draft,error:dError}=await admin.from("drafts").select("title,caption,hashtags,media_url,media_type").eq("id",job.draft_id).eq("user_id",job.user_id).single();
         if(dError||!draft)throw new Error("Scheduled draft is missing.");
         const result=await publishOne(admin,job.user_id,job.platform,draft);
-        await admin.from("publish_jobs").update({status:"published",result_url:result.url||result.id,error_message:null,updated_at:new Date().toISOString()}).eq("id",job.id);
-        results.push({id:job.id,status:"published"});
+        const finalStatus=result.status==="uploaded_to_inbox_finish_in_tiktok"?"awaiting_action":"published";
+        await admin.from("publish_jobs").update({status:finalStatus,result_url:result.url||result.id,error_message:null,updated_at:new Date().toISOString()}).eq("id",job.id);
+        results.push({id:job.id,status:finalStatus});
       }catch(error){
         const msg=error instanceof Error?error.message:"Publishing failed.";
         await admin.from("publish_jobs").update({status:"failed",error_message:msg.slice(0,500),updated_at:new Date().toISOString()}).eq("id",job.id);
