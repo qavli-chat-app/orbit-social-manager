@@ -9,7 +9,7 @@ const cors = {
 };
 const SITE_URL = "https://qavli-chat-app.github.io/orbit-social-manager/";
 const CALLBACK_URL = "https://bimngjcqcebertsgvovl.supabase.co/functions/v1/youtube-oauth";
-const SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"];
+const SCOPES = ["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube.readonly"];
 
 function reply(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: cors });
