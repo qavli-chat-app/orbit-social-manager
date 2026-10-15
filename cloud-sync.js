@@ -22,6 +22,9 @@ panel.innerHTML = `
     <button class="btn" id="cloudSignOut" hidden>Sign out</button>
     <button class="btn" id="cloudSync" hidden>Sync local drafts</button>
     <button class="btn" id="cloudRefresh" hidden>Refresh cloud drafts</button>\n    <button class="btn" id="youtubeConnect" hidden>Connect YouTube</button>
+    <button class="btn" id="facebookConnect" hidden>Connect Facebook Pages</button>
+    <button class="btn" id="instagramConnect" hidden>Connect Instagram</button>
+    <button class="btn" id="tiktokConnect" hidden>Connect TikTok</button>
   </div>
   <p id="cloudMessage" class="mini" role="status" aria-live="polite" style="margin-top:12px">Cloud database is configured; social platforms are not connected yet.</p>
   <div id="cloudDraftList" style="margin-top:10px"></div>
@@ -35,7 +38,7 @@ const message = (text, bad = false) => {
   $("cloudMessage").style.color = bad ? "#ff9999" : "var(--muted)";
 };
 const setBusy = (busy) => {
-  ["cloudSignIn", "cloudSignUp", "cloudSync", "cloudRefresh", "youtubeConnect"].forEach(id => {
+  ["cloudSignIn", "cloudSignUp", "cloudSync", "cloudRefresh", "youtubeConnect", "facebookConnect", "instagramConnect", "tiktokConnect"].forEach(id => {
     const el = $(id); if (el && !el.hidden) el.disabled = busy;
   });
 };
@@ -163,6 +166,9 @@ function updateAuthUi(session) {
   $("cloudSync").hidden = !signedIn;
   $("cloudRefresh").hidden = !signedIn;
   $("youtubeConnect").hidden = !signedIn;
+  $("facebookConnect").hidden = !signedIn;
+  $("instagramConnect").hidden = !signedIn;
+  $("tiktokConnect").hidden = !signedIn;
   $("cloudEmail").disabled = signedIn;
   $("cloudPassword").disabled = signedIn;
   if (signedIn) {
@@ -170,6 +176,7 @@ function updateAuthUi(session) {
     message("Signed in as " + (session.user.email || "your account") + ". Cloud drafts are owner-protected.");
     refreshCloudDrafts();
     refreshYouTubeStatus();
+    refreshSocialStatus();
   } else {
     $("cloudDraftList").innerHTML = "";
   }
@@ -212,10 +219,65 @@ $("youtubeConnect").addEventListener("click", async () => {
     setBusy(false);
   }
 });
+
+async function refreshSocialStatus() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data, error } = await supabase.from("social_accounts")
+    .select("platform,display_name,connection_status")
+    .in("platform", ["facebook", "instagram", "tiktok"])
+    .eq("connection_status", "connected")
+    .order("connected_at", { ascending: false });
+  if (error) return;
+  const rows = data || [];
+  const label = (platform, fallback) => {
+    const item = rows.find(row => row.platform === platform);
+    return item ? "Connected: " + (item.display_name || fallback) : "Connect " + fallback;
+  };
+  $("facebookConnect").textContent = label("facebook", "Facebook Pages");
+  $("instagramConnect").textContent = label("instagram", "Instagram");
+  $("tiktokConnect").textContent = label("tiktok", "TikTok");
+  ["facebookConnect", "instagramConnect", "tiktokConnect"].forEach(id => {
+    const connected = $(""+id).textContent.startsWith("Connected:");
+    $(""+id).classList.toggle("success", connected);
+  });
+}
+async function connectSocial(platform, buttonId) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return message("Sign in before connecting a social account.", true);
+  setBusy(true);
+  try {
+    const response = await fetch("https://bimngjcqcebertsgvovl.supabase.co/functions/v1/social-oauth?action=start&platform=" + encodeURIComponent(platform), {
+      method: "GET",
+      headers: { "apikey": SUPABASE_PUBLISHABLE_KEY, "Authorization": "Bearer " + session.access_token }
+    });
+    const data = await response.json();
+    if (!response.ok || !data.authorization_url) throw new Error(data.error || "Social OAuth setup is not ready.");
+    window.location.assign(data.authorization_url);
+  } catch (error) {
+    message(error?.message || "Unable to start social authorization.", true);
+    setBusy(false);
+  }
+}
+$("facebookConnect").addEventListener("click", () => connectSocial("facebook", "facebookConnect"));
+$("instagramConnect").addEventListener("click", () => connectSocial("instagram", "instagramConnect"));
+$("tiktokConnect").addEventListener("click", () => connectSocial("tiktok", "tiktokConnect"));
+
 const params = new URLSearchParams(window.location.search);
 if (params.get("youtube_connected") === "1") {
   message("YouTube channel authorization was verified. Sign in to refresh its connection status.");
   params.delete("youtube_connected");
+if (params.has("social_connected")) {
+  const platform = params.get("social_connected");
+  const pages = params.get("pages");
+  const instagram = params.get("instagram");
+  message(platform === "meta"
+    ? "Meta OAuth verified. Saved " + (pages || "0") + " Facebook Page(s) and " + (instagram || "0") + " Instagram professional account(s)."
+    : "TikTok OAuth and account profile verified. Refreshing connection status.");
+  params.delete("social_connected");
+  params.delete("pages");
+  params.delete("instagram");
+}
   const clean = window.location.pathname + (params.toString() ? "?" + params.toString() : "") + window.location.hash;
   window.history.replaceState({}, "", clean);
 }
