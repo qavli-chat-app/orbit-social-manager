@@ -29,3 +29,32 @@ In the Supabase Dashboard for this project, open **Authentication → URL Config
 - Redirect URL allow-list: `https://qavli-chat-app.github.io/orbit-social-manager/**`
 
 The frontend requests email-confirmation redirects back to the deployed site. Test sign-up/sign-in after the latest GitHub Pages deployment. Do not paste passwords, access tokens, service-role keys, or social app secrets into chat or GitHub.
+
+
+## YouTube OAuth integration (read-only channel verification)
+
+A Supabase Edge Function named `youtube-oauth` has been deployed. It is intentionally **fail-closed** until the owner configures Google OAuth and the encryption key in Supabase's server-side Edge Function Secrets. It requests only the `youtube.readonly` scope, verifies the user's channel with YouTube Data API v3, and encrypts OAuth tokens at rest with AES-GCM before saving them. It does not upload/publish videos yet.
+
+### One-time setup required by the project owner
+
+1. In Google Cloud Console, create/select a project and enable **YouTube Data API v3**.
+2. Configure the OAuth consent screen. While testing, add only your own Google account as a test user if Google offers that option. Public use with YouTube scopes may require Google's verification.
+3. Create an OAuth client of type **Web application**.
+4. Add this exact **Authorized redirect URI**:
+   `https://bimngjcqcebertsgvovl.supabase.co/functions/v1/youtube-oauth`
+5. In the Supabase project, open **Edge Functions → Secrets**:  
+   `https://supabase.com/dashboard/project/bimngjcqcebertsgvovl/functions/secrets`
+6. Add these server-side secrets (never put them in GitHub, frontend code, or chat):
+   - `GOOGLE_CLIENT_ID` = the OAuth web client ID
+   - `GOOGLE_CLIENT_SECRET` = the OAuth web client secret
+   - `ORBIT_TOKEN_ENCRYPTION_KEY` = a fresh base64-encoded 32-byte random key generated on your own device (for example, with `openssl rand -base64 32`). Keep a safe backup; changing it without re-encrypting existing rows makes saved tokens unreadable.
+7. In Supabase Authentication → URL Configuration, keep the app site URL set to `https://qavli-chat-app.github.io/orbit-social-manager/`.
+8. Deploy the latest GitHub Pages build and test sign-in, then press **Connect YouTube**. Confirm the verified channel name appears. Do not call it connected until that test succeeds.
+
+### Security and current scope
+
+- The callback uses a short-lived, one-time random `state` value bound to the signed-in Supabase user.
+- OAuth tokens are encrypted with AES-GCM before being stored; the encryption key and Google client secret belong only in Edge Function Secrets.
+- The `youtube_oauth_states` and `youtube_oauth_tokens` tables have RLS enabled and no grants for `anon` or `authenticated`; only server-side code should access them.
+- The first iteration requests read-only channel access. Video uploads, scheduling, token refresh/revocation UX, and public Google app verification are not yet implemented.
+- Keep within free-tier quotas; enabling the API does not guarantee unlimited free quota.
