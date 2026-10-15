@@ -162,12 +162,14 @@ function updateAuthUi(session) {
   $("cloudSignOut").hidden = !signedIn;
   $("cloudSync").hidden = !signedIn;
   $("cloudRefresh").hidden = !signedIn;
+  $("youtubeConnect").hidden = !signedIn;
   $("cloudEmail").disabled = signedIn;
   $("cloudPassword").disabled = signedIn;
   if (signedIn) {
     $("cloudEmail").value = session.user.email || "";
     message("Signed in as " + (session.user.email || "your account") + ". Cloud drafts are owner-protected.");
     refreshCloudDrafts();
+    refreshYouTubeStatus();
   } else {
     $("cloudDraftList").innerHTML = "";
   }
