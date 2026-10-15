@@ -73,4 +73,5 @@ let deferredPrompt=null;window.addEventListener('beforeinstallprompt',e=>{e.prev
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 renderChecks();renderDrafts();
 </script>
+<script type="module" src="./cloud-sync.js"></script>
 </body></html>
