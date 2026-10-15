@@ -1,0 +1,11 @@
+{
+  "name": "Orbit Social Manager",
+  "short_name": "Orbit Studio",
+  "description": "Free-first social media content planning dashboard",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c0e18",
+  "theme_color": "#101322",
+  "icons": [{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
