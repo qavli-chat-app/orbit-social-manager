@@ -1,0 +1,20 @@
+name: Orbit scheduled publishing worker
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+jobs:
+  run-due-publishing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Process due Orbit publishing jobs
+        env:
+          ORBIT_WORKER_SECRET: ${{ secrets.ORBIT_WORKER_SECRET }}
+        run: |
+          test -n "$ORBIT_WORKER_SECRET" || (echo "Missing ORBIT_WORKER_SECRET repository secret" && exit 1)
+          curl --fail --silent --show-error --max-time 90 \
+            -X POST "https://bimngjcqcebertsgvovl.supabase.co/functions/v1/social-publish" \
+            -H "Authorization: Bearer $ORBIT_WORKER_SECRET" \
+            -H "Content-Type: application/json" \
+            --data '{"action":"run-due"}'
