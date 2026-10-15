@@ -18,3 +18,7 @@ This repository is a **front-end starter**, not a completed multi-platform autom
 
 ## Install on Android
 Open the deployed HTTPS URL in Chrome → menu → **Add to Home screen** / **Install app**.
+
+
+## Supabase backend
+The separate Supabase project has been provisioned for this app. See [supabase/README.md](./supabase/README.md) for the backend scope and security notes. The frontend uses the public publishable key only; social provider secrets are not stored in GitHub Pages.
