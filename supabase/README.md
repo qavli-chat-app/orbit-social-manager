@@ -21,3 +21,11 @@ Creation quote confirmed: `$0/month` for project creation only.
 - Stay within the Supabase Free plan limits; do not enable paid features or upgrade without explicit approval.
 
 See [Supabase RLS documentation](https://supabase.com/docs/guides/database/postgres/row-level-security).
+
+
+## One-time Auth URL setting
+In the Supabase Dashboard for this project, open **Authentication → URL Configuration** and set:
+- Site URL: `https://qavli-chat-app.github.io/orbit-social-manager/`
+- Redirect URL allow-list: `https://qavli-chat-app.github.io/orbit-social-manager/**`
+
+The frontend requests email-confirmation redirects back to the deployed site. Test sign-up/sign-in after the latest GitHub Pages deployment. Do not paste passwords, access tokens, service-role keys, or social app secrets into chat or GitHub.
