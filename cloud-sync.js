@@ -21,7 +21,8 @@ panel.innerHTML = `
     <button class="btn" id="cloudSignUp">Create account</button>
     <button class="btn" id="cloudSignOut" hidden>Sign out</button>
     <button class="btn" id="cloudSync" hidden>Sync local drafts</button>
-    <button class="btn" id="cloudRefresh" hidden>Refresh cloud drafts</button>\n    <button class="btn" id="youtubeConnect" hidden>Connect YouTube</button>
+    <button class="btn" id="cloudRefresh" hidden>Refresh cloud drafts</button>
+    <button class="btn" id="youtubeConnect" hidden>Connect YouTube</button>
     <button class="btn" id="facebookConnect" hidden>Connect Facebook Pages</button>
     <button class="btn" id="instagramConnect" hidden>Connect Instagram</button>
     <button class="btn" id="tiktokConnect" hidden>Connect TikTok</button>
