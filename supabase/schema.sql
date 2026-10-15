@@ -136,3 +136,14 @@ create policy "youtube_oauth_states_deny_client_access" on public.youtube_oauth_
 drop policy if exists "youtube_oauth_tokens_deny_client_access" on public.youtube_oauth_tokens;
 create policy "youtube_oauth_tokens_deny_client_access" on public.youtube_oauth_tokens
   for all to anon, authenticated using (false) with check (false);
+
+
+-- Indexes and explicit deny-all RLS policies for server-only OAuth records.
+create index if not exists publish_jobs_draft_id_idx on public.publish_jobs (draft_id);
+create index if not exists youtube_oauth_states_user_id_idx on public.youtube_oauth_states (user_id);
+drop policy if exists "youtube_oauth_states_deny_client_access" on public.youtube_oauth_states;
+create policy "youtube_oauth_states_deny_client_access" on public.youtube_oauth_states
+  for all to anon, authenticated using (false) with check (false);
+drop policy if exists "youtube_oauth_tokens_deny_client_access" on public.youtube_oauth_tokens;
+create policy "youtube_oauth_tokens_deny_client_access" on public.youtube_oauth_tokens
+  for all to anon, authenticated using (false) with check (false);
