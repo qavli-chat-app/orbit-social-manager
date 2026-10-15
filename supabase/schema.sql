@@ -100,3 +100,28 @@ create policy "publish_jobs_cancel_own_queued" on public.publish_jobs
   with check ((select auth.uid()) = user_id and status = 'cancelled');
 create policy "publish_jobs_delete_own" on public.publish_jobs
   for delete to authenticated using ((select auth.uid()) = user_id);
+
+
+-- Server-only YouTube OAuth state and encrypted token storage.
+-- These tables intentionally have no anon/authenticated grants; Edge Functions
+-- access them with the server-only Supabase secret key.
+create table if not exists public.youtube_oauth_states (
+  state text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists youtube_oauth_states_expiry_idx on public.youtube_oauth_states (expires_at);
+
+create table if not exists public.youtube_oauth_tokens (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  channel_id text not null,
+  channel_title text,
+  encrypted_tokens text not null,
+  scopes text[] not null default '{}',
+  connected_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.youtube_oauth_states enable row level security;
+alter table public.youtube_oauth_tokens enable row level security;
+revoke all on table public.youtube_oauth_states, public.youtube_oauth_tokens from anon, authenticated;
