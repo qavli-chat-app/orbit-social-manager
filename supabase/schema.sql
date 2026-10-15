@@ -147,3 +147,39 @@ create policy "youtube_oauth_states_deny_client_access" on public.youtube_oauth_
 drop policy if exists "youtube_oauth_tokens_deny_client_access" on public.youtube_oauth_tokens;
 create policy "youtube_oauth_tokens_deny_client_access" on public.youtube_oauth_tokens
   for all to anon, authenticated using (false) with check (false);
+
+
+-- Server-only OAuth state and encrypted tokens for Meta and TikTok.
+-- No browser roles receive grants; Edge Functions access these tables only.
+create table if not exists public.social_oauth_states (
+  state text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  platform text not null check (platform in ('facebook','instagram','tiktok')),
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists social_oauth_states_expiry_idx on public.social_oauth_states (expires_at);
+create index if not exists social_oauth_states_user_id_idx on public.social_oauth_states (user_id);
+
+create table if not exists public.social_oauth_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  platform text not null check (platform in ('facebook','instagram','tiktok')),
+  provider_account_id text not null,
+  encrypted_tokens text not null,
+  scopes text[] not null default '{}',
+  expires_at timestamptz,
+  connected_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, platform, provider_account_id)
+);
+create index if not exists social_oauth_tokens_user_platform_idx on public.social_oauth_tokens (user_id, platform);
+alter table public.social_oauth_states enable row level security;
+alter table public.social_oauth_tokens enable row level security;
+revoke all on table public.social_oauth_states, public.social_oauth_tokens from anon, authenticated;
+drop policy if exists "social_oauth_states_deny_client_access" on public.social_oauth_states;
+create policy "social_oauth_states_deny_client_access" on public.social_oauth_states
+  for all to anon, authenticated using (false) with check (false);
+drop policy if exists "social_oauth_tokens_deny_client_access" on public.social_oauth_tokens;
+create policy "social_oauth_tokens_deny_client_access" on public.social_oauth_tokens
+  for all to anon, authenticated using (false) with check (false);
