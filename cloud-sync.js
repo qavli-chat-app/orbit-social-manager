@@ -38,7 +38,7 @@ const message = (text, bad = false) => {
   $("cloudMessage").style.color = bad ? "#ff9999" : "var(--muted)";
 };
 const setBusy = (busy) => {
-  ["cloudSignIn", "cloudSignUp", "cloudSync", "cloudRefresh", "youtubeConnect", "facebookConnect", "instagramConnect", "tiktokConnect"].forEach(id => {
+  ["cloudSignIn", "cloudSignUp", "cloudSync", "cloudRefresh", "youtubeConnect", "facebookConnect", "instagramConnect", "tiktokConnect", "publishNow", "schedulePublish"].forEach(id => {
     const el = $(id); if (el && !el.hidden) el.disabled = busy;
   });
 };
@@ -169,6 +169,8 @@ function updateAuthUi(session) {
   $("facebookConnect").hidden = !signedIn;
   $("instagramConnect").hidden = !signedIn;
   $("tiktokConnect").hidden = !signedIn;
+  $("publishNow").hidden = !signedIn;
+  $("schedulePublish").hidden = !signedIn;
   $("cloudEmail").disabled = signedIn;
   $("cloudPassword").disabled = signedIn;
   if (signedIn) {
@@ -274,7 +276,73 @@ async function connectSocial(platform, buttonId) {
 }
 $("facebookConnect").addEventListener("click", () => connectSocial("facebook", "facebookConnect"));
 $("instagramConnect").addEventListener("click", () => connectSocial("instagram", "instagramConnect"));
+
 $("tiktokConnect").addEventListener("click", () => connectSocial("tiktok", "tiktokConnect"));
+
+const platformMap = { "YouTube":"youtube", "Facebook":"facebook", "Instagram":"instagram", "TikTok":"tiktok" };
+async function uploadSelectedMedia(user) {
+  const file = $("videoFile").files?.[0];
+  if (!file) return {media_url:"",media_type:null};
+  if (file.size > 50 * 1024 * 1024) throw new Error("Choose a media file no larger than 50 MB.");
+  if (!(file.type.startsWith("video/") || ["image/jpeg","image/png","image/webp"].includes(file.type))) {
+    throw new Error("Supported media: MP4/QuickTime/WebM video or JPG/PNG/WebP image.");
+  }
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-100) || "media";
+  const path = user.id + "/" + crypto.randomUUID() + "-" + safeName;
+  const {error} = await supabase.storage.from("orbit-media").upload(path,file,{
+    cacheControl:"3600",upsert:false,contentType:file.type
+  });
+  if (error) throw new Error("Media upload failed: " + error.message);
+  const {data} = supabase.storage.from("orbit-media").getPublicUrl(path);
+  return {media_url:data.publicUrl,media_type:file.type.startsWith("image/")?"image":"video"};
+}
+async function runPublishing(action) {
+  const {data:{session}} = await supabase.auth.getSession();
+  if (!session?.user) return message("Sign in before publishing or scheduling.",true);
+  const selected = [...document.querySelectorAll("#platformChecks input:checked")]
+    .map(el=>platformMap[el.value]).filter(Boolean);
+  if (!selected.length) return message("Select at least one supported platform: YouTube, Facebook, Instagram, or TikTok.",true);
+  const scheduleValue = $("scheduledFor")?.value || "";
+  if (action === "schedule" && !scheduleValue) return message("Choose a schedule date and time first.",true);
+  let scheduledFor = "";
+  if (action === "schedule") {
+    const date = new Date(scheduleValue);
+    if (!Number.isFinite(date.getTime()) || date.getTime() < Date.now()+60000) return message("Choose a future time at least one minute from now.",true);
+    scheduledFor = date.toISOString();
+  }
+  setBusy(true);
+  try {
+    const media = await uploadSelectedMedia(session.user);
+    const draft = {
+      title:$("postTitle").value.trim(),
+      caption:$("caption").value.trim(),
+      hashtags:$("hashtags").value.trim(),
+      media_url:media.media_url,
+      media_type:media.media_type,
+      scheduled_for:scheduledFor
+    };
+    const outcomes = [];
+    for (const platform of selected) {
+      const response = await fetch("https://bimngjcqcebertsgvovl.supabase.co/functions/v1/social-publish",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","apikey":SUPABASE_PUBLISHABLE_KEY,"Authorization":"Bearer "+session.access_token},
+        body:JSON.stringify({...draft,platform,action})
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) outcomes.push(platform+": "+(result.error||"Request failed"));
+      else if (action==="schedule") outcomes.push(platform+": scheduled for "+new Date(result.job.scheduled_for).toLocaleString());
+      else if (result.result?.status==="uploaded_to_inbox_finish_in_tiktok") outcomes.push(platform+": uploaded to TikTok inbox; finish publishing in TikTok");
+      else if (result.result?.status==="published_private") outcomes.push(platform+": uploaded to YouTube as private");
+      else outcomes.push(platform+": publish confirmed by provider");
+    }
+    message(outcomes.join(" | "),outcomes.some(x=>x.includes(": ")&&(/failed|error|could not|missing|expired|not enabled|does not/i.test(x))));
+  } catch (error) {
+    message(error?.message || "Publishing request failed.",true);
+  } finally { setBusy(false); }
+}
+$("publishNow").addEventListener("click",()=>runPublishing("publish"));
+$("schedulePublish").addEventListener("click",()=>runPublishing("schedule"));
+
 
 const params = new URLSearchParams(window.location.search);
 if (params.get("youtube_connected") === "1") {
