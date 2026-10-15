@@ -31,9 +31,9 @@ In the Supabase Dashboard for this project, open **Authentication → URL Config
 The frontend requests email-confirmation redirects back to the deployed site. Test sign-up/sign-in after the latest GitHub Pages deployment. Do not paste passwords, access tokens, service-role keys, or social app secrets into chat or GitHub.
 
 
-## YouTube OAuth integration (read-only channel verification)
+## YouTube OAuth integration (channel verification + upload scope)
 
-A Supabase Edge Function named `youtube-oauth` has been deployed. It is intentionally **fail-closed** until the owner configures Google OAuth and the encryption key in Supabase's server-side Edge Function Secrets. It requests only the `youtube.readonly` scope, verifies the user's channel with YouTube Data API v3, and encrypts OAuth tokens at rest with AES-GCM before saving them. It does not upload/publish videos yet.
+A Supabase Edge Function named `youtube-oauth` has been deployed. It is intentionally **fail-closed** until the owner configures Google OAuth and the encryption key in Supabase's server-side Edge Function Secrets. It requests `youtube.readonly` and `youtube.upload`, verifies the user's channel with YouTube Data API v3, and encrypts OAuth tokens at rest with AES-GCM before saving them. Reconnect after changing scopes so a saved token receives the upload grant.
 
 ### One-time setup required by the project owner
 
@@ -84,3 +84,30 @@ Add these values under Supabase **Edge Functions → Secrets** (never GitHub or 
 - Deployed: `youtube-oauth` Edge Function and `social-oauth` Edge Function.
 - Database check confirmed `social_oauth_states` and `social_oauth_tokens` have RLS enabled and neither `anon` nor `authenticated` can SELECT them.
 - Not yet verified: actual provider account connection (secrets and provider-side OAuth apps still need owner configuration), any real post, and scheduled publishing.
+
+
+## Publishing, media storage and scheduled jobs
+
+The `social-publish` Edge Function is deployed. It validates the signed-in user for direct publish/schedule requests, uses encrypted server-side provider tokens, and only reports immediate publishing after a provider confirms the response. Current behavior:
+- YouTube: video upload through the official API; the first version sets visibility to **private**. Reconnect after the new `youtube.upload` scope is configured.
+- Facebook Pages: text, image, or video post where the authorized Page token and Meta permissions allow it.
+- Instagram Professional: image or Reel publishing through the official Graph API; requires a public media URL and Meta publishing permission.
+- TikTok: official **inbox upload** only. The user must finish/publish in TikTok. This does not claim to auto-publish directly.
+- Schedule: creates a private cloud draft and queued job. A GitHub Actions workflow runs every five minutes to process due jobs, but it will not run successfully until the same worker secret is set in GitHub and Supabase.
+
+### Public media bucket
+A public `orbit-media` Supabase Storage bucket was configured with a 50 MB file limit and image/video MIME allowlist. Authenticated uploads are restricted to the user's own folder (`<user-id>/...`). Files in a public bucket are publicly readable by anyone who obtains the URL; upload only content you intend to share publicly. Free-plan quotas still apply.
+
+### Finish the secure setup
+1. In Supabase **Edge Functions → Secrets**, set the OAuth values documented above and a fresh `ORBIT_WORKER_SECRET` random secret.
+2. In GitHub repo **Settings → Secrets and variables → Actions**, add the exact same value as repository secret `ORBIT_WORKER_SECRET`. Never commit the secret or send it in chat.
+3. Configure Google, Meta and TikTok developer apps with the exact callback URL above. Use provider-side test users/roles during testing.
+4. Sign in to the deployed app, connect each platform, then test with a non-sensitive post. YouTube defaults to private; TikTok requires final confirmation inside TikTok.
+5. Test scheduled jobs and inspect Supabase Edge Function logs and the GitHub Actions run. A scheduled job is not considered verified until a due job is actually processed and provider confirmation is stored.
+
+### Platform restrictions
+- Meta may require app review/advanced access for Page and Instagram publishing permissions.
+- Instagram publishing requires a Professional account linked to an authorized Facebook Page; personal accounts are not supported by this flow.
+- TikTok direct publishing is not implemented here. The official inbox-upload flow requires approved `video.upload`, and TikTok may require product review and verified media URL domains. Direct Post has separate audit and product-use requirements.
+- Public YouTube publishing may require Google OAuth verification and applicable API compliance review; this implementation intentionally defaults to private visibility.
+- No paid resource has been intentionally enabled. Stay within free-tier quotas and do not upgrade automatically.
