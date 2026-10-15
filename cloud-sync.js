@@ -21,7 +21,7 @@ panel.innerHTML = `
     <button class="btn" id="cloudSignUp">Create account</button>
     <button class="btn" id="cloudSignOut" hidden>Sign out</button>
     <button class="btn" id="cloudSync" hidden>Sync local drafts</button>
-    <button class="btn" id="cloudRefresh" hidden>Refresh cloud drafts</button>
+    <button class="btn" id="cloudRefresh" hidden>Refresh cloud drafts</button>\n    <button class="btn" id="youtubeConnect" hidden>Connect YouTube</button>
   </div>
   <p id="cloudMessage" class="mini" role="status" aria-live="polite" style="margin-top:12px">Cloud database is configured; social platforms are not connected yet.</p>
   <div id="cloudDraftList" style="margin-top:10px"></div>
@@ -35,7 +35,7 @@ const message = (text, bad = false) => {
   $("cloudMessage").style.color = bad ? "#ff9999" : "var(--muted)";
 };
 const setBusy = (busy) => {
-  ["cloudSignIn", "cloudSignUp", "cloudSync", "cloudRefresh"].forEach(id => {
+  ["cloudSignIn", "cloudSignUp", "cloudSync", "cloudRefresh", "youtubeConnect"].forEach(id => {
     const el = $(id); if (el && !el.hidden) el.disabled = busy;
   });
 };
@@ -177,6 +177,47 @@ $("cloudSignIn").addEventListener("click", signIn);
 $("cloudSignUp").addEventListener("click", signUp);
 $("cloudSync").addEventListener("click", syncLocalDrafts);
 $("cloudRefresh").addEventListener("click", refreshCloudDrafts);
+async function refreshYouTubeStatus() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data, error } = await supabase.from("social_accounts")
+    .select("display_name,connection_status,connected_at")
+    .eq("platform", "youtube").eq("connection_status", "connected")
+    .order("connected_at", { ascending: false }).limit(1);
+  if (error) return;
+  if (data?.length) {
+    $("youtubeConnect").textContent = "YouTube connected: " + (data[0].display_name || "Channel");
+    $("youtubeConnect").classList.add("success");
+  } else {
+    $("youtubeConnect").textContent = "Connect YouTube";
+    $("youtubeConnect").classList.remove("success");
+  }
+}
+$("youtubeConnect").addEventListener("click", async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return message("Sign in before connecting YouTube.", true);
+  setBusy(true);
+  try {
+    const response = await fetch("https://bimngjcqcebertsgvovl.supabase.co/functions/v1/youtube-oauth?action=start", {
+      method: "GET",
+      headers: { "apikey": SUPABASE_PUBLISHABLE_KEY, "Authorization": "Bearer " + session.access_token }
+    });
+    const data = await response.json();
+    if (!response.ok || !data.authorization_url) throw new Error(data.error || "YouTube OAuth setup is not ready.");
+    window.location.assign(data.authorization_url);
+  } catch (error) {
+    message(error?.message || "Unable to start YouTube authorization.", true);
+    setBusy(false);
+  }
+});
+const params = new URLSearchParams(window.location.search);
+if (params.get("youtube_connected") === "1") {
+  message("YouTube channel authorization was verified. Sign in to refresh its connection status.");
+  params.delete("youtube_connected");
+  const clean = window.location.pathname + (params.toString() ? "?" + params.toString() : "") + window.location.hash;
+  window.history.replaceState({}, "", clean);
+}
+
 $("cloudSignOut").addEventListener("click", async () => {
   const { error } = await supabase.auth.signOut();
   if (error) authError(error);
