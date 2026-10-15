@@ -201,6 +201,7 @@ async function refreshYouTubeStatus() {
     $("youtubeConnect").textContent = "Connect YouTube";
     $("youtubeConnect").classList.remove("success");
   }
+  refreshConnectedCount();
 }
 $("youtubeConnect").addEventListener("click", async () => {
   const { data: { session } } = await supabase.auth.getSession();
@@ -241,6 +242,18 @@ async function refreshSocialStatus() {
     const connected = $(""+id).textContent.startsWith("Connected:");
     $(""+id).classList.toggle("success", connected);
   });
+  refreshConnectedCount();
+}
+async function refreshConnectedCount() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data, error } = await supabase.from("social_accounts")
+    .select("platform,provider_account_id")
+    .eq("connection_status", "connected");
+  if (error) return;
+  const unique = new Set((data || []).map(row => row.platform + ":" + row.provider_account_id));
+  const stat = document.getElementById("connectedStat");
+  if (stat) stat.textContent = unique.size + " / 8";
 }
 async function connectSocial(platform, buttonId) {
   const { data: { session } } = await supabase.auth.getSession();
